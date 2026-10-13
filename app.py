@@ -18,14 +18,16 @@ def download_audio():
         temp_dir = tempfile.mkdtemp()
         
         ydl_opts = {
+            # تعديل هنا: السماح بـ yt-dlp لاختيار أي جودة متاحة إذا لم يجد bestaudio
             'format': 'bestaudio/best',
-            # قمنا بتثبيت اسم الملف الناتج ليكون دائماً 'audio.mp3' لتجنب مشاكل الأسماء العشوائية
             'outtmpl': os.path.join(temp_dir, 'audio.%(ext)s'),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            # إضافة هذا السطر لتخطي الأخطاء والمحاولة بكل الطرق
+            'ignoreerrors': True, 
             'quiet': True,
             'no_warnings': True
         }
@@ -33,11 +35,10 @@ def download_audio():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
             
-        # البحث عن أي ملف mp3 داخل المجلد المؤقت وإرجاعه
         mp3_files = glob.glob(os.path.join(temp_dir, '*.mp3'))
         
         if not mp3_files:
-             return jsonify({"error": "Failed to create mp3 file"}), 500
+             return jsonify({"error": "Failed to create mp3 file. The video might be unavailable or restricted."}), 500
              
         mp3_filename = mp3_files[0]
         
