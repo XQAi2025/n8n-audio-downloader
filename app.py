@@ -2,6 +2,7 @@ from flask import Flask, request, send_file, jsonify
 import yt_dlp
 import os
 import tempfile
+import glob
 
 app = Flask(__name__)
 
@@ -18,7 +19,8 @@ def download_audio():
         
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            # قمنا بتثبيت اسم الملف الناتج ليكون دائماً 'audio.mp3' لتجنب مشاكل الأسماء العشوائية
+            'outtmpl': os.path.join(temp_dir, 'audio.%(ext)s'),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -29,12 +31,16 @@ def download_audio():
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            # استنتاج اسم الملف الناتج بعد تحويله لـ mp3
-            filename = ydl.prepare_filename(info)
-            mp3_filename = filename.rsplit('.', 1)[0] + '.mp3'
+            ydl.download([url])
+            
+        # البحث عن أي ملف mp3 داخل المجلد المؤقت وإرجاعه
+        mp3_files = glob.glob(os.path.join(temp_dir, '*.mp3'))
         
-        # إرجاع الملف الصوتي كاستجابة (Binary)
+        if not mp3_files:
+             return jsonify({"error": "Failed to create mp3 file"}), 500
+             
+        mp3_filename = mp3_files[0]
+        
         return send_file(mp3_filename, as_attachment=True, mimetype='audio/mpeg')
     
     except Exception as e:
